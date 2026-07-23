@@ -79,6 +79,34 @@ void nimble_scheduler_block_current_delay(nimble_tcb_t *tcb, nimble_tick_t wake_
     nimble_list_insert_tail(&delayed_list, &tcb->link);
 }
 
+void nimble_scheduler_prepare_block(nimble_tcb_t *tcb, nimble_tick_t timeout_ticks)
+{
+    nimble_scheduler_remove(tcb);
+    tcb->state = NIMBLE_TASK_BLOCKED;
+    if (timeout_ticks != NIMBLE_WAIT_FOREVER) {
+        tcb->wake_tick = nimble_scheduler_get_tick_count() + timeout_ticks;
+        nimble_list_insert_tail(&delayed_list, &tcb->link);
+    }
+    /* If waiting forever, tcb->link is left un-linked (self-referencing,
+     * see nimble_list_init at task creation) - this task is reachable
+     * only via the sync primitive's own wait list (tcb->event_link)
+     * until something signals it. */
+}
+
+nimble_tcb_t *nimble_scheduler_wake_waiter(nimble_list_t *wait_list)
+{
+    if (nimble_list_is_empty(wait_list)) {
+        return NULL;
+    }
+    nimble_list_node_t *node = wait_list->next;
+    nimble_tcb_t *tcb = NIMBLE_CONTAINER_OF(node, nimble_tcb_t, event_link);
+    nimble_list_remove(&tcb->event_link);
+    nimble_list_remove(&tcb->link); /* detach from delayed list too, if it had a pending timeout; harmless no-op otherwise */
+    tcb->last_wait_result = NIMBLE_OK;
+    nimble_scheduler_add_ready(tcb);
+    return tcb;
+}
+
 nimble_tcb_t *nimble_scheduler_select_next(void)
 {
     /* If the task that was running is still runnable (i.e. wasn't just
@@ -120,6 +148,10 @@ void nimble_scheduler_tick(void)
         nimble_tcb_t *tcb = NIMBLE_CONTAINER_OF(node, nimble_tcb_t, link);
         if ((int32_t)(g_tick_count - tcb->wake_tick) >= 0) {
             nimble_list_remove(&tcb->link);
+            nimble_list_remove(&tcb->event_link); /* detach from a mutex/semaphore/queue wait
+                                                     * list too, if that's why it was here -
+                                                     * safe no-op for a plain nimble_task_delay() */
+            tcb->last_wait_result = NIMBLE_ERR_TIMEOUT;
             nimble_scheduler_add_ready(tcb);
         }
         node = next_node;

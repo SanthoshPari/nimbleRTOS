@@ -20,7 +20,14 @@ typedef void (*nimble_task_fn_t)(void *arg);
 typedef struct nimble_tcb {
     uint32_t *sp;                 /* current stack pointer - OFFSET 0, DO NOT MOVE */
 
-    nimble_list_node_t link;      /* intrusive link: ready list, blocked list, or timer list */
+    nimble_list_node_t link;      /* intrusive link: ready list or delayed(timeout) list */
+    nimble_list_node_t event_link; /* separate intrusive link: mutex/semaphore/queue wait list.
+                                     * Kept as a distinct node (not reused from `link`) because a
+                                     * timed wait on a sync primitive needs the task on BOTH its
+                                     * wait list AND the delayed list simultaneously - one list
+                                     * node can only ever be on one list at a time. FreeRTOS solves
+                                     * the same problem with two list items per TCB for the same
+                                     * reason; this is that same trade-off made explicit. */
 
     uint8_t  priority;            /* current effective priority (may be boosted) */
     uint8_t  base_priority;       /* priority as created; restored after priority inheritance ends */
@@ -30,6 +37,11 @@ typedef struct nimble_tcb {
     uint32_t  stack_words;
 
     nimble_tick_t wake_tick;      /* tick count at which a delayed/blocked-with-timeout task wakes */
+    volatile nimble_status_t last_wait_result; /* NIMBLE_OK if woken by a signal (mutex unlock,
+                                     * semaphore give, queue send), NIMBLE_ERR_TIMEOUT if woken by
+                                     * timeout expiry. state alone can't distinguish these - both
+                                     * paths lead through READY -> RUNNING identically - so this
+                                     * is set explicitly by whichever path actually wakes the task. */
 
     struct nimble_mutex *blocked_on_mutex; /* non-NULL if blocked on a mutex (drives priority inheritance) */
 

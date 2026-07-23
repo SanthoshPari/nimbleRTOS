@@ -31,6 +31,27 @@ void nimble_scheduler_remove(nimble_tcb_t *tcb);
 void nimble_scheduler_block_current_delay(nimble_tcb_t *tcb, nimble_tick_t wake_tick);
 
 /*
+ * Generic blocking used by sync primitives (mutex/semaphore/queue).
+ * The caller has already linked `tcb` onto its own wait list via
+ * tcb->event_link (typically priority-sorted so the head is the
+ * highest-priority waiter). This function does the *scheduler-side*
+ * half: removes tcb from the ready structures, marks it BLOCKED, and
+ * - unless timeout_ticks is NIMBLE_WAIT_FOREVER - also links it onto
+ * the delayed list (via tcb->link) so nimble_scheduler_tick() will
+ * wake it on timeout even if it's never signaled.
+ */
+void nimble_scheduler_prepare_block(nimble_tcb_t *tcb, nimble_tick_t timeout_ticks);
+
+/*
+ * Pops and readies the highest-priority waiter (list head) from a
+ * sync-primitive wait list linked via tcb->event_link. Also detaches
+ * it from the delayed list if it had a pending timeout. Returns NULL
+ * if the wait list is empty. This is the "signal" side of every
+ * blocking primitive - mutex unlock, semaphore give, queue send.
+ */
+nimble_tcb_t *nimble_scheduler_wake_waiter(nimble_list_t *wait_list);
+
+/*
  * Core decision function: returns a pointer to the TCB that should run
  * next. Called from PendSV_Handler with interrupts effectively locked
  * out of the scheduler's data structures (BASEPRI masking — see

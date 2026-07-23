@@ -33,7 +33,9 @@ nimble_status_t nimble_task_create(nimble_tcb_t *tcb,
         return NIMBLE_ERR_INVALID_ARG;
     }
 
-    memset(tcb, 0, sizeof(*tcb));
+    memset(tcb, 0, sizeof(*tcb)); /* also zero-initializes last_wait_result to NIMBLE_OK */
+    nimble_list_init(&tcb->link);
+    nimble_list_init(&tcb->event_link);
 
 #if NIMBLE_ENABLE_STACK_CHECKING
     for (uint32_t i = 0; i < stack_words; i++) {
