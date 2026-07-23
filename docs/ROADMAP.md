@@ -7,7 +7,7 @@ Tracking progress section by section.
 - [x] 3. Context switch — PendSV/SysTick in ARM assembly
 - [x] 4. Sync primitives — mutex w/ priority inheritance, semaphore, queue
 - [x] 5. Software timers + tick management
-- [ ] 6. Port layer — linker script, startup code, STM32F4 register access
+- [x] 6. Port layer — linker script, startup code, STM32F4 register access
 - [ ] 7. Application demo — power-supply state machine on nimbleRTOS
 - [ ] 8. Host-side unit tests + GitHub Actions CI
 - [ ] 9. README polish, license, push to GitHub
