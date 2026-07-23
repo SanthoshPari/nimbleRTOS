@@ -26,7 +26,7 @@ C_SOURCES = \
 
 ASM_SOURCES = \
     port/arch/cortex-m4/context_switch.S \
-    port/stm32f4/startup/startup_stm32f407xx.s
+    port/stm32f4/startup/startup_stm32f407xx.S
 
 LDSCRIPT = port/stm32f4/linker/STM32F407VG_FLASH.ld
 

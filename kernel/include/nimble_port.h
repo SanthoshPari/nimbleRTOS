@@ -7,7 +7,7 @@
 /*
  * Port interface.
  *
- * The portable kernel (kernel/src/*.c) never touches a register or an
+ * The portable kernel (every .c file under kernel/src) never touches a register or an
  * NVIC bit directly. Every architecture-specific action goes through
  * this interface, implemented once per target in port/arch/<arch>/.
  * This is the same separation FreeRTOS draws between "kernel" and
